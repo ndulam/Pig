@@ -1,0 +1,54 @@
+scd1 implementation:
+Step1:
+load the data which is upto date into TARGETTABLE_FINAL(new)
+step2:
+load the old table data into EVENT_DATA_ALL(old)
+step3:
+generate ID from TARGETTABLE_FINAL
+EVENT_GEN = FOREACH TARGETTABLE_FINAL generate EVENT_SRC_ID;
+
+step4:
+Identify the duplicates by joining both 
+JOINEDDATA = JOIN EVENT_DATA_ALL by event_src_id,EVENT_GEN by EVENT_SRC_ID; 
+JOINEDDATA = foreach JOINEDDATA generate EVENT_DATA_ALL::event_src_id as event_src_id ;
+
+step5:
+Filter out the duplicates identified(if any) in the above step by using left outer joining and filter by null
+
+DATA_FULL = JOIN TARGETTABLE_FINAL by EVENT_SRC_ID LEFT OUTER,  JOINEDDATA by event_src_id;
+DATA_INSERT_ONLY = FILTER DATA_FULL BY JOINEDDATA::event_src_id IS null; 
+
+
+Sample Example with dataset
+Data set:
+oldfile:
+1,naresh,india
+2,aparna,Coimbatore
+3,Mahesh,Banglore
+4,Chiiti,Karimnagar
+
+new file:
+1,naresh,Seattle
+2,aparna,Hyderabad
+4,Chiiti,Karimnagar
+
+final file:
+(1,naresh,Seattle,1)
+(2,aparna,Hyderabad,2)
+(4,Chiiti,Karimnagar,4)
+
+
+
+--Load Target table data
+new = load 'newfile' USING PigStorage(',') as (id,name,place);
+old = LOAD 'oldfile' USING PigStorage(',') as (id,name,place);
+
+
+new_id = FOREACH new generate id;
+
+--Identify the duplicates by joining both
+JOINEDDATA = JOIN old by id,new_id by id; 
+JOINEDDATA = foreach JOINEDDATA generate old::id as id ;
+
+Filter out the duplicates identified(if any) in the above step
+DATA_FULL = JOIN new by id LEFT OUTER,  JOINEDDATA by id;
